@@ -1,0 +1,35 @@
+# AWS Region to deploy resources
+aws_region = "us-east-1"
+
+# Project name - used as a prefix for resource names
+project_name = "litellm"
+
+# VPC CIDR block
+vpc_cidr = "10.0.0.0/16"
+
+# Availability zones to use
+availability_zones = ["us-east-1a", "us-east-1b"]
+
+# Database configuration
+db_name = "litellm"
+db_username = "litellm"
+db_password = "" # Leave empty to auto-generate a secure password
+db_instance_type = "db.serverless" # Required for Aurora Serverless v2
+min_capacity = 0.5 # Minimum capacity in ACUs
+db_max_capacity = 4.0 # Maximum capacity in ACUs
+
+# Container configuration
+container_image = "ghcr.io/berriai/litellm:main-stable"
+container_port = 4000
+cpu = 1024 # 1 vCPU
+memory = 2048 # 2 GB
+
+# Scaling configuration
+desired_count = 1
+max_capacity = 2
+
+# LiteLLM configuration
+litellm_config_path = "config/litellm_config.yaml"
+
+# Environment
+environment = "dev"
