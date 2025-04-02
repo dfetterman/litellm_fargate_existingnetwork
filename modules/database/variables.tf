@@ -32,13 +32,13 @@ variable "security_group_id" {
 variable "min_capacity" {
   description = "Minimum capacity for Aurora Serverless v2 in ACUs"
   type        = number
-  default     = 0.5  # Minimum value for Aurora Serverless v2
+  default     = 0.5 # Minimum value for Aurora Serverless v2
 }
 
 variable "max_capacity" {
   description = "Maximum capacity for Aurora Serverless v2 in ACUs"
   type        = number
-  default     = 4.0  # Adjust based on expected workload
+  default     = 4.0 # Adjust based on expected workload
 }
 
 variable "skip_final_snapshot" {

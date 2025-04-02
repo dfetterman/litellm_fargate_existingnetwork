@@ -28,8 +28,5 @@ memory = 2048 # 2 GB
 desired_count = 1
 max_capacity = 2
 
-# LiteLLM configuration
-litellm_config_path = "config/litellm_config.yaml"
-
 # Environment
 environment = "dev"

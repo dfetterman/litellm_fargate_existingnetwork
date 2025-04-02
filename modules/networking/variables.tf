@@ -25,3 +25,14 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "on_premises_cidr_blocks" {
+  description = "List of CIDR blocks for your on-premises network"
+  type        = list(string)
+  default     = []
+}
+
+variable "aws_region" {
+  description = "AWS region to deploy resources"
+  type        = string
+}

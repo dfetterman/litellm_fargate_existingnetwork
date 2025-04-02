@@ -8,10 +8,7 @@ output "private_subnets" {
   value       = module.vpc.private_subnets
 }
 
-output "public_subnets" {
-  description = "IDs of the public subnets"
-  value       = module.vpc.public_subnets
-}
+# Removed public_subnets output as we no longer have public subnets
 
 output "database_subnets" {
   description = "IDs of the database subnets"

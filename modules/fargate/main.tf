@@ -1,10 +1,30 @@
+# ECR Module
+module "ecr" {
+  source = "./ecr"
+
+  aws_region      = var.aws_region
+  repository_name = "${var.name}-proxy"
+  tags            = var.tags
+}
+
+# IAM Module
+module "iam" {
+  source = "./iam"
+
+  name                  = var.name
+  litellm_secrets_arn   = var.litellm_secrets_arn
+  # Using consolidated secret for master key
+  master_key_secret_arn = var.litellm_secrets_arn
+  tags                  = var.tags
+}
+
 # ECS Cluster
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
-  version = "~> 5.0"
+  version = "~> 5.12.0"
 
   cluster_name = var.name
-  
+
   cluster_configuration = {
     execute_command_configuration = {
       logging = "OVERRIDE"
@@ -13,7 +33,7 @@ module "ecs" {
       }
     }
   }
-  
+
   fargate_capacity_providers = {
     FARGATE = {
       default_capacity_provider_strategy = {
@@ -25,121 +45,24 @@ module "ecs" {
   tags = var.tags
 }
 
-# CloudWatch Log Group
+# CloudWatch Log Group with explicit retention
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.name}"
   retention_in_days = var.log_retention_days
   tags              = var.tags
 }
 
-# Task Execution IAM Role
-resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "${var.name}-task-execution-role"
+# Enable Container Insights
+resource "aws_ecs_cluster_capacity_providers" "insights" {
+  cluster_name = var.name  # Use the cluster name instead of the full ARN
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        }
-      }
-    ]
-  })
+  capacity_providers = ["FARGATE"]
 
-  tags = var.tags
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
-  role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-# Create SSM Parameter for LiteLLM config
-resource "aws_ssm_parameter" "litellm_config" {
-  name        = var.config_parameter_name
-  description = "LiteLLM configuration in YAML format"
-  type        = "String"
-  value       = var.config_content
-  tier        = "Standard"
-  tags        = var.tags
-}
-
-# IAM Policy for Secrets Manager access
-resource "aws_iam_policy" "secrets_manager_access" {
-  name        = "${var.name}-secrets-manager-access"
-  description = "Allow access to Secrets Manager for database credentials"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = [
-          "secretsmanager:GetSecretValue",
-        ]
-        Effect   = "Allow"
-        Resource = var.db_secret_arn
-      }
-    ]
-  })
-}
-
-# IAM Policy for SSM Parameter Store access
-resource "aws_iam_policy" "ssm_parameter_access" {
-  name        = "${var.name}-ssm-parameter-access"
-  description = "Allow access to SSM Parameter Store for LiteLLM configuration"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = [
-          "ssm:GetParameter",
-          "ssm:GetParameters",
-        ]
-        Effect   = "Allow"
-        Resource = aws_ssm_parameter.litellm_config.arn
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "secrets_manager_access" {
-  role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = aws_iam_policy.secrets_manager_access.arn
-}
-
-resource "aws_iam_role_policy_attachment" "ssm_parameter_access" {
-  role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = aws_iam_policy.ssm_parameter_access.arn
-}
-
-# Task Role
-resource "aws_iam_role" "ecs_task_role" {
-  name = "${var.name}-task-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = var.tags
-}
-
-# Attach SSM Parameter Store access policy to task role
-resource "aws_iam_role_policy_attachment" "task_ssm_parameter_access" {
-  role       = aws_iam_role.ecs_task_role.name
-  policy_arn = aws_iam_policy.ssm_parameter_access.arn
+  default_capacity_provider_strategy {
+    base              = 1
+    weight            = 100
+    capacity_provider = "FARGATE"
+  }
 }
 
 # Task Definition
@@ -149,33 +72,28 @@ resource "aws_ecs_task_definition" "litellm" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.cpu
   memory                   = var.memory
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn            = aws_iam_role.ecs_task_role.arn
+  execution_role_arn       = module.iam.task_execution_role_arn
+  task_role_arn            = module.iam.task_role_arn
 
   container_definitions = jsonencode([
     {
       name      = "${var.name}-container"
-      image     = var.container_image
+      image     = module.ecr.image_uri
       essential = true
-      
-      # Use a startup script to fetch config from Parameter Store and start LiteLLM
-      entryPoint = [
-        "sh",
-        "-c"
-      ],
-      
-      command = [
-        "if ! command -v aws &> /dev/null; then echo 'AWS CLI not found, installing...' && pip install awscli; fi && aws ssm get-parameter --name ${var.config_parameter_name} --region ${var.aws_region} --query Parameter.Value --output text > /tmp/litellm_config.yaml && litellm --config /tmp/litellm_config.yaml --port ${var.container_port} --host 0.0.0.0"
-      ],
-      
+
       portMappings = [
         {
           containerPort = var.container_port
           hostPort      = var.container_port
           protocol      = "tcp"
+        },
+        {
+          containerPort = 8080
+          hostPort      = 8080
+          protocol      = "tcp"
         }
       ]
-      
+
       environment = [
         {
           name  = "DB_HOST"
@@ -200,16 +118,33 @@ resource "aws_ecs_task_definition" "litellm" {
         {
           name  = "AWS_REGION"
           value = var.aws_region
-        }
+        },
+        {
+          name  = "AWS_REGION_NAME"
+          value = var.aws_region
+        },
+        {
+          name  = "PORT"
+          value = tostring(var.container_port)
+        },
+        # CONFIG_SECRET_ID removed - using local config file instead
       ],
-      
+
       secrets = [
         {
           name      = "DB_PASSWORD"
-          valueFrom = "${var.db_secret_arn}:password::"
+          valueFrom = "${var.litellm_secrets_arn}:db_password::"
+        },
+        {
+          name      = "DATABASE_URL"
+          valueFrom = "${var.litellm_secrets_arn}:db_connection_string::"
+        },
+        {
+          name      = "LITELLM_MASTER_KEY"
+          valueFrom = "${var.litellm_secrets_arn}:litellm_master_key::"
         }
       ],
-      
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -218,13 +153,14 @@ resource "aws_ecs_task_definition" "litellm" {
           "awslogs-stream-prefix" = "ecs"
         }
       }
-      
+
+      # Enhanced health check using dedicated endpoint
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:${var.container_port}/health/liveliness || exit 1"]
+        command     = ["CMD-SHELL", "curl -f http://localhost:8080/health/readiness || exit 1"]
+        startPeriod = 120  # Increase grace period to give container more time to start
         interval    = 30
         timeout     = 5
         retries     = 3
-        startPeriod = 60
       }
     }
   ])
@@ -235,14 +171,27 @@ resource "aws_ecs_task_definition" "litellm" {
 # Application Load Balancer
 resource "aws_lb" "main" {
   name               = "${var.name}-alb"
-  internal           = false
+  internal           = true  # Always internal
   load_balancer_type = "application"
   security_groups    = [var.alb_security_group_id]
-  subnets            = var.public_subnets
+  subnets            = var.private_subnets  # Always use private subnets
 
   enable_deletion_protection = false
 
+  # Add access logs configuration
+  access_logs {
+    bucket  = var.log_bucket_id
+    prefix  = "alb-access-logs"
+    enabled = true
+  }
+
   tags = var.tags
+}
+
+# Associate WAF with ALB
+resource "aws_wafv2_web_acl_association" "main" {
+  resource_arn = aws_lb.main.arn
+  web_acl_arn  = var.web_acl_arn
 }
 
 # ALB Target Group
@@ -253,22 +202,22 @@ resource "aws_lb_target_group" "main" {
   vpc_id      = var.vpc_id
   target_type = "ip"
 
+  # Enhanced health check with dedicated endpoint
   health_check {
-    enabled             = true
-    interval            = 30
     path                = "/health/liveliness"
     port                = "traffic-port"
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
-    timeout             = 5
     protocol            = "HTTP"
     matcher             = "200"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
   }
 
   tags = var.tags
 }
 
-# ALB Listener
+# HTTP Listener - Direct forward to target group
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
@@ -284,14 +233,14 @@ resource "aws_lb_listener" "http" {
 
 # ECS Service
 resource "aws_ecs_service" "litellm" {
-  name                               = "${var.name}-service"
-  cluster                            = module.ecs.cluster_id
-  task_definition                    = aws_ecs_task_definition.litellm.arn
-  desired_count                      = var.desired_count
-  launch_type                        = "FARGATE"
-  scheduling_strategy                = "REPLICA"
-  health_check_grace_period_seconds  = 60
-  force_new_deployment               = true
+  name                              = "${var.name}-service"
+  cluster                           = module.ecs.cluster_id
+  task_definition                   = aws_ecs_task_definition.litellm.arn
+  desired_count                     = var.desired_count
+  launch_type                       = "FARGATE"
+  scheduling_strategy               = "REPLICA"
+  health_check_grace_period_seconds = 60
+  force_new_deployment              = true
 
   network_configuration {
     subnets          = var.private_subnets
@@ -321,8 +270,8 @@ resource "aws_appautoscaling_target" "ecs_target" {
   service_namespace  = "ecs"
 }
 
-# Auto Scaling Policy - CPU
-resource "aws_appautoscaling_policy" "ecs_policy_cpu" {
+# CPU-based auto-scaling
+resource "aws_appautoscaling_policy" "ecs_cpu_policy" {
   name               = "${var.name}-cpu-autoscaling"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs_target.resource_id
@@ -339,8 +288,8 @@ resource "aws_appautoscaling_policy" "ecs_policy_cpu" {
   }
 }
 
-# Auto Scaling Policy - Memory
-resource "aws_appautoscaling_policy" "ecs_policy_memory" {
+# Memory-based auto-scaling
+resource "aws_appautoscaling_policy" "ecs_memory_policy" {
   name               = "${var.name}-memory-autoscaling"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs_target.resource_id
@@ -351,8 +300,8 @@ resource "aws_appautoscaling_policy" "ecs_policy_memory" {
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageMemoryUtilization"
     }
-    target_value       = 70
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 60
+    target_value       = 70  # Target 70% memory utilization
+    scale_in_cooldown  = 300 # Wait 5 minutes before scaling in
+    scale_out_cooldown = 60  # Wait 1 minute before scaling out
   }
 }

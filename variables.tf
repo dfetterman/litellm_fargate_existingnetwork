@@ -56,20 +56,16 @@ variable "db_instance_type" {
 variable "min_capacity" {
   description = "Minimum capacity for Aurora Serverless v2 in ACUs"
   type        = number
-  default     = 0.5  # Minimum value for Aurora Serverless v2
+  default     = 0.5 # Minimum value for Aurora Serverless v2
 }
 
 variable "db_max_capacity" {
   description = "Maximum capacity for Aurora Serverless v2 in ACUs"
   type        = number
-  default     = 4.0  # Adjust based on expected workload
+  default     = 4.0 # Adjust based on expected workload
 }
 
-variable "container_image" {
-  description = "Docker image for the LiteLLM container"
-  type        = string
-  default     = "ghcr.io/berriai/litellm:main-stable"
-}
+# Container image is now built and pushed to ECR by the ecr_container module
 
 variable "container_port" {
   description = "Port the container listens on"
@@ -101,12 +97,6 @@ variable "max_capacity" {
   default     = 2
 }
 
-variable "litellm_config_path" {
-  description = "Path to the LiteLLM config file"
-  type        = string
-  default     = "config/litellm_config.yaml"
-}
-
 variable "enable_s3_bucket" {
   description = "Whether to create an S3 bucket for logs and artifacts"
   type        = bool
@@ -118,3 +108,17 @@ variable "s3_bucket_name" {
   type        = string
   default     = null
 }
+
+variable "on_premises_cidr_blocks" {
+  description = "List of CIDR blocks for your on-premises network"
+  type        = list(string)
+  default     = []
+}
+
+variable "customer_gateway_ip_address" {
+  description = "IP address of your on-premises VPN device"
+  type        = string
+  default     = ""
+}
+
+# Authentication Variables removed - using internal ALB with security groups instead
