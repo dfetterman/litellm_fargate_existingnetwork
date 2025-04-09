@@ -8,6 +8,7 @@ variable "vpc_id" {
   type        = string
 }
 
+
 variable "public_subnets" {
   description = "IDs of the public subnets (not used since ALB is always internal)"
   type        = list(string)
@@ -74,28 +75,35 @@ variable "log_retention_days" {
   default     = 30
 }
 
-variable "db_host" {
-  description = "Hostname of the database"
+variable "database_url" {
+  description = "Fully constructed database URL"
   type        = string
 }
 
-variable "db_port" {
-  description = "Port of the database"
-  type        = number
-}
-
-variable "db_name" {
-  description = "Name of the database"
+variable "litellm_master_key" {
+  description = "Master key for LiteLLM"
   type        = string
 }
 
-variable "db_username" {
-  description = "Username for the database"
+variable "litellm_salt_key" {
+  description = "Salt key for LiteLLM"
   type        = string
 }
 
-variable "litellm_secrets_arn" {
-  description = "ARN of the consolidated LiteLLM secrets in AWS Secrets Manager"
+# Removed litellm_secrets_arn variable as we're no longer using AWS Secrets Manager
+
+variable "task_execution_role_arn" {
+  description = "ARN of the ECS task execution role"
+  type        = string
+}
+
+variable "task_role_arn" {
+  description = "ARN of the ECS task role"
+  type        = string
+}
+
+variable "container_image_uri" {
+  description = "URI of the Docker image in ECR"
   type        = string
 }
 
@@ -115,9 +123,63 @@ variable "log_bucket_id" {
   type        = string
 }
 
-variable "web_acl_arn" {
-  description = "ARN of the WAF Web ACL"
+# WAF Web ACL variable removed - using CloudFront with WAF instead
+
+# Authentication Variables removed - using internal ALB with security groups instead
+
+variable "container_health_check_start_period" {
+  description = "Grace period for container health checks (seconds)"
+  type        = number
+  default     = 120
+}
+
+variable "container_health_check_path" {
+  description = "Path for container health checks"
+  type        = string
+  default     = "/health/liveliness"
+}
+
+variable "autoscaling_cpu_target" {
+  description = "Target CPU utilization percentage for autoscaling"
+  type        = number
+  default     = 70
+}
+
+variable "autoscaling_memory_target" {
+  description = "Target memory utilization percentage for autoscaling"
+  type        = number
+  default     = 70
+}
+
+# vpc_endpoint_service_id removed - now created in fargate module
+
+variable "vpc_cidr" {
+  description = "CIDR block for the VPC"
   type        = string
 }
 
-# Authentication Variables removed - using internal ALB with security groups instead
+variable "azs" {
+  description = "List of availability zones"
+  type        = list(string)
+}
+
+variable "on_premises_cidr_blocks" {
+  description = "List of on-premises CIDR blocks"
+  type        = list(string)
+  default     = []
+}
+
+variable "alb_target_group_arn" {
+  description = "ARN of the ALB target group"
+  type        = string
+}
+
+variable "alb_dns_name" {
+  description = "DNS name of the ALB"
+  type        = string
+}
+
+variable "alb_arn" {
+  description = "ARN of the ALB"
+  type        = string
+}

@@ -18,12 +18,6 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Attach the AWS managed SecretsManager read policy
-resource "aws_iam_role_policy_attachment" "secrets_manager_read_policy" {
-  role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
-}
-
 # Task Role - For runtime permissions
 resource "aws_iam_role" "ecs_task_role" {
   name = "${var.name}-task-role"
@@ -36,12 +30,6 @@ resource "aws_iam_role" "ecs_task_role" {
     }]
   })
   tags = var.tags
-}
-
-# Attach the AWS managed SecretsManager read policy to task role
-resource "aws_iam_role_policy_attachment" "task_secrets_manager_read_policy" {
-  role       = aws_iam_role.ecs_task_role.name
-  policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
 }
 
 # Attach AWS managed Bedrock policy to task role

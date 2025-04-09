@@ -1,32 +1,116 @@
+#####################################################
+# LiteLLM on AWS Fargate with Client VPN - Configuration
+#####################################################
+
+#####################################################
+# GENERAL SETTINGS
+#####################################################
+
 # AWS Region to deploy resources
+# Choose a region where AWS Bedrock is available if using Bedrock models
 aws_region = "us-east-1"
 
 # Project name - used as a prefix for resource names
+# This will be used to name all resources created by Terraform
 project_name = "litellm"
 
-# VPC CIDR block
+# Environment tag (dev/staging/prod)
+# Used for resource tagging and can affect certain configuration defaults
+environment = "dev"
+
+#####################################################
+# NETWORKING CONFIGURATION
+#####################################################
+
+# VPC CIDR block - defines the IP range for your VPC
+# Make sure this doesn't overlap with other VPCs in your AWS account
 vpc_cidr = "10.0.0.0/16"
 
-# Availability zones to use
+# Availability zones to use - at least two for high availability
+# These should be valid AZs in your selected AWS region
 availability_zones = ["us-east-1a", "us-east-1b"]
 
-# Database configuration
+# On-premises networks that need access (if any)
+# Add your office/home network CIDRs here if needed
+on_premises_cidr_blocks = []
+
+#####################################################
+# DATABASE CONFIGURATION
+#####################################################
+
+# Database name for LiteLLM's PostgreSQL database
 db_name = "litellm"
+
+# Database username
 db_username = "litellm"
-db_password = "" # Leave empty to auto-generate a secure password
-db_instance_type = "db.serverless" # Required for Aurora Serverless v2
-min_capacity = 0.5 # Minimum capacity in ACUs
-db_max_capacity = 4.0 # Maximum capacity in ACUs
 
-# Container configuration
-container_image = "ghcr.io/berriai/litellm:main-stable"
+# Database password
+# IMPORTANT: Leave empty to auto-generate a secure password (recommended)
+# The generated password will be output after deployment
+db_password = ""
+
+# Database engine settings
+db_engine = "aurora-postgresql"
+db_engine_mode = "provisioned"
+db_engine_version = "16.6.4"  # Latest Aurora PostgreSQL compatible version
+
+# Database capacity settings (Aurora Serverless v2)
+db_min_capacity = 0.5  # Minimum capacity in ACUs (0.5 is the minimum)
+db_max_capacity = 4.0  # Maximum capacity in ACUs
+
+# Database protection
+# Set to true for production environments to prevent accidental deletion
+db_deletion_protection = false
+
+#####################################################
+# CONTAINER CONFIGURATION
+#####################################################
+
+# Port the LiteLLM container listens on
 container_port = 4000
-cpu = 1024 # 1 vCPU
-memory = 2048 # 2 GB
 
-# Scaling configuration
+# Container resources
+cpu = 1024    # 1 vCPU (1024 = 1 vCPU)
+memory = 2048 # 2 GB RAM
+
+# Container health check settings
+container_health_check_path = "/health/liveliness"
+container_health_check_start_period = 120  # Seconds to wait before starting health checks
+
+#####################################################
+# SCALING CONFIGURATION
+#####################################################
+
+# Initial number of container instances
 desired_count = 1
-max_capacity = 2
 
-# Environment
-environment = "dev"
+# Maximum number of container instances for autoscaling
+fargate_max_capacity = 2
+
+# Autoscaling targets (percentage utilization that triggers scaling)
+autoscaling_cpu_target = 70
+autoscaling_memory_target = 70
+
+#####################################################
+# LOGGING CONFIGURATION
+#####################################################
+
+# Number of days to retain CloudWatch logs
+log_retention_days = 90
+
+#####################################################
+# CLIENT VPN CONFIGURATION
+#####################################################
+
+# Whether to enable the Client VPN endpoint
+# Set to false if you want to use a different access method
+enable_client_vpn = true
+
+# ARN of the ACM certificate for the Client VPN endpoint
+# IMPORTANT: You must create this certificate in ACM before deployment
+# Example: "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"
+vpn_certificate_arn = ""
+
+# CIDR block for VPN client IP assignments
+# This should not overlap with your VPC CIDR or other networks
+client_vpn_cidr = "172.16.0.0/22"

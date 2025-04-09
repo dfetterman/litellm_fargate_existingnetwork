@@ -37,15 +37,6 @@ resource "aws_s3_bucket_policy" "log_bucket" {
         }
       },
       {
-        Sid       = "AllowELBLogDelivery"
-        Effect    = "Allow"
-        Principal = {
-          AWS = data.aws_elb_service_account.main.arn
-        }
-        Action    = "s3:PutObject"
-        Resource  = "${aws_s3_bucket.log_bucket.arn}/*"
-      },
-      {
         Sid       = "AllowALBLogDelivery"
         Effect    = "Allow"
         Principal = {

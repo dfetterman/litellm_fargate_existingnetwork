@@ -9,6 +9,12 @@ variable "repository_name" {
   default     = "litellm-proxy"
 }
 
+variable "scan_on_push" {
+  description = "Enable image scanning on push"
+  type        = bool
+  default     = true
+}
+
 variable "build_args" {
   description = "Build arguments for Docker build"
   type        = map(string)

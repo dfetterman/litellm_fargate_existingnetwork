@@ -3,14 +3,27 @@ output "load_balancer_dns" {
   value       = module.fargate.load_balancer_dns
 }
 
-output "litellm_endpoint" {
-  description = "Endpoint URL for the LiteLLM proxy (internal ALB)"
+output "litellm_internal_endpoint" {
+  description = "Internal endpoint URL for the LiteLLM proxy (internal ALB)"
   value       = "http://${module.fargate.load_balancer_dns}"
+}
+
+# Verified Access outputs removed - using Client VPN instead
+
+# Client VPN outputs
+output "client_vpn_endpoint_dns_name" {
+  description = "DNS name of the Client VPN endpoint"
+  value       = var.enable_client_vpn ? module.client_vpn[0].client_vpn_endpoint_dns_name : null
+}
+
+output "client_vpn_self_service_portal_url" {
+  description = "URL of the Client VPN self-service portal"
+  value       = var.enable_client_vpn ? module.client_vpn[0].client_vpn_self_service_portal_url : null
 }
 
 output "access_instructions" {
   description = "Instructions for accessing the service"
-  value       = "This service is deployed with an internal ALB and can only be accessed from within the VPC or from on-premises networks via the configured security groups."
+  value       = "This service is deployed with an internal ALB accessible via Client VPN. Connect to the VPN using the OpenVPN client and access the internal ALB endpoint."
 }
 
 output "database_endpoint" {

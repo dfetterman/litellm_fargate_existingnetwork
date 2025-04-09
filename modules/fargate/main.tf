@@ -1,22 +1,4 @@
-# ECR Module
-module "ecr" {
-  source = "./ecr"
-
-  aws_region      = var.aws_region
-  repository_name = "${var.name}-proxy"
-  tags            = var.tags
-}
-
-# IAM Module
-module "iam" {
-  source = "./iam"
-
-  name                  = var.name
-  litellm_secrets_arn   = var.litellm_secrets_arn
-  # Using consolidated secret for master key
-  master_key_secret_arn = var.litellm_secrets_arn
-  tags                  = var.tags
-}
+# Container and IAM modules are now declared in the root main.tf
 
 # ECS Cluster
 module "ecs" {
@@ -54,7 +36,7 @@ resource "aws_cloudwatch_log_group" "ecs" {
 
 # Enable Container Insights
 resource "aws_ecs_cluster_capacity_providers" "insights" {
-  cluster_name = var.name  # Use the cluster name instead of the full ARN
+  cluster_name = module.ecs.cluster_name  # Use the cluster name from the ECS module
 
   capacity_providers = ["FARGATE"]
 
@@ -72,13 +54,13 @@ resource "aws_ecs_task_definition" "litellm" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.cpu
   memory                   = var.memory
-  execution_role_arn       = module.iam.task_execution_role_arn
-  task_role_arn            = module.iam.task_role_arn
+  execution_role_arn       = var.task_execution_role_arn
+  task_role_arn            = var.task_role_arn
 
   container_definitions = jsonencode([
     {
       name      = "${var.name}-container"
-      image     = module.ecr.image_uri
+      image     = var.container_image_uri
       essential = true
 
       portMappings = [
@@ -86,62 +68,29 @@ resource "aws_ecs_task_definition" "litellm" {
           containerPort = var.container_port
           hostPort      = var.container_port
           protocol      = "tcp"
-        },
-        {
-          containerPort = 8080
-          hostPort      = 8080
-          protocol      = "tcp"
         }
       ]
 
       environment = [
         {
-          name  = "DB_HOST"
-          value = var.db_host
-        },
-        {
-          name  = "DB_PORT"
-          value = tostring(var.db_port)
-        },
-        {
-          name  = "DB_NAME"
-          value = var.db_name
-        },
-        {
-          name  = "DB_USER"
-          value = var.db_username
-        },
-        {
-          name  = "STORE_MODEL_IN_DB"
-          value = "True"
-        },
-        {
           name  = "AWS_REGION"
-          value = var.aws_region
-        },
-        {
-          name  = "AWS_REGION_NAME"
           value = var.aws_region
         },
         {
           name  = "PORT"
           value = tostring(var.container_port)
         },
-        # CONFIG_SECRET_ID removed - using local config file instead
-      ],
-
-      secrets = [
         {
-          name      = "DB_PASSWORD"
-          valueFrom = "${var.litellm_secrets_arn}:db_password::"
+          name  = "DATABASE_URL"
+          value = var.database_url
         },
         {
-          name      = "DATABASE_URL"
-          valueFrom = "${var.litellm_secrets_arn}:db_connection_string::"
+          name  = "LITELLM_MASTER_KEY"
+          value = var.litellm_master_key
         },
         {
-          name      = "LITELLM_MASTER_KEY"
-          valueFrom = "${var.litellm_secrets_arn}:litellm_master_key::"
+          name  = "LITELLM_SALT_KEY"
+          value = var.litellm_salt_key
         }
       ],
 
@@ -154,12 +103,12 @@ resource "aws_ecs_task_definition" "litellm" {
         }
       }
 
-      # Enhanced health check using dedicated endpoint
+      # Update container health check to use LiteLLM's built-in endpoint
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:8080/health/readiness || exit 1"]
-        startPeriod = 120  # Increase grace period to give container more time to start
+        command     = ["CMD-SHELL", "curl -f http://localhost:${var.container_port}/health/liveliness || exit 1"]
+        startPeriod = var.container_health_check_start_period
         interval    = 30
-        timeout     = 5
+        timeout     = 10
         retries     = 3
       }
     }
@@ -168,68 +117,10 @@ resource "aws_ecs_task_definition" "litellm" {
   tags = var.tags
 }
 
-# Application Load Balancer
-resource "aws_lb" "main" {
-  name               = "${var.name}-alb"
-  internal           = true  # Always internal
-  load_balancer_type = "application"
-  security_groups    = [var.alb_security_group_id]
-  subnets            = var.private_subnets  # Always use private subnets
+# Reference networking module for ALB target group
 
-  enable_deletion_protection = false
 
-  # Add access logs configuration
-  access_logs {
-    bucket  = var.log_bucket_id
-    prefix  = "alb-access-logs"
-    enabled = true
-  }
-
-  tags = var.tags
-}
-
-# Associate WAF with ALB
-resource "aws_wafv2_web_acl_association" "main" {
-  resource_arn = aws_lb.main.arn
-  web_acl_arn  = var.web_acl_arn
-}
-
-# ALB Target Group
-resource "aws_lb_target_group" "main" {
-  name        = "${var.name}-tg"
-  port        = var.container_port
-  protocol    = "HTTP"
-  vpc_id      = var.vpc_id
-  target_type = "ip"
-
-  # Enhanced health check with dedicated endpoint
-  health_check {
-    path                = "/health/liveliness"
-    port                = "traffic-port"
-    protocol            = "HTTP"
-    matcher             = "200"
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-  }
-
-  tags = var.tags
-}
-
-# HTTP Listener - Direct forward to target group
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.main.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.main.arn
-  }
-
-  tags = var.tags
-}
+data "aws_caller_identity" "current" {}
 
 # ECS Service
 resource "aws_ecs_service" "litellm" {
@@ -239,7 +130,7 @@ resource "aws_ecs_service" "litellm" {
   desired_count                     = var.desired_count
   launch_type                       = "FARGATE"
   scheduling_strategy               = "REPLICA"
-  health_check_grace_period_seconds = 60
+  health_check_grace_period_seconds = 300
   force_new_deployment              = true
 
   network_configuration {
@@ -249,7 +140,7 @@ resource "aws_ecs_service" "litellm" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.main.arn
+    target_group_arn = var.alb_target_group_arn
     container_name   = "${var.name}-container"
     container_port   = var.container_port
   }
@@ -282,7 +173,7 @@ resource "aws_appautoscaling_policy" "ecs_cpu_policy" {
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
-    target_value       = 70
+    target_value       = var.autoscaling_cpu_target
     scale_in_cooldown  = 300
     scale_out_cooldown = 60
   }
@@ -300,7 +191,7 @@ resource "aws_appautoscaling_policy" "ecs_memory_policy" {
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageMemoryUtilization"
     }
-    target_value       = 70  # Target 70% memory utilization
+    target_value       = var.autoscaling_memory_target
     scale_in_cooldown  = 300 # Wait 5 minutes before scaling in
     scale_out_cooldown = 60  # Wait 1 minute before scaling out
   }

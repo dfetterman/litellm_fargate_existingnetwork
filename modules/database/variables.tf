@@ -41,32 +41,33 @@ variable "max_capacity" {
   default     = 4.0 # Adjust based on expected workload
 }
 
-variable "skip_final_snapshot" {
-  description = "Whether to skip the final snapshot when deleting the database"
-  type        = bool
-  default     = true
-}
-
 variable "deletion_protection" {
   description = "Whether to enable deletion protection for the database"
   type        = bool
   default     = false
 }
 
-variable "backup_retention_period" {
-  description = "Number of days to retain backups"
-  type        = number
-  default     = 7
-}
-
-variable "backup_window" {
-  description = "Preferred backup window"
-  type        = string
-  default     = "03:00-04:00"
-}
+# Backup variables removed - backups disabled
 
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)
   default     = {}
+}
+
+variable "engine" {
+  description = "Database engine type"
+  type        = string
+  default     = "aurora-postgresql"
+}
+
+variable "engine_mode" {
+  description = "Database engine mode"
+  type        = string
+  default     = "provisioned"
+}
+
+variable "engine_version" {
+  description = "PostgreSQL engine version for Aurora"
+  type        = string
 }

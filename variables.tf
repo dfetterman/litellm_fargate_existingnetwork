@@ -42,18 +42,37 @@ variable "db_password" {
 }
 
 variable "environment" {
-  description = "Environment name"
+  description = "Environment name (dev/stage/prod)"
   type        = string
   default     = "dev"
 }
 
-variable "db_instance_type" {
-  description = "Instance type for the database (only used for non-serverless instances)"
+# Verified Access variables removed - using Client VPN instead
+
+variable "vpn_certificate_arn" {
+  description = "ARN of the ACM certificate for the Client VPN endpoint. You must create a server certificate in AWS Certificate Manager before deployment."
   type        = string
-  default     = "db.t3.small"
+  default     = ""
+  
+  validation {
+    condition     = var.vpn_certificate_arn != "" || !var.enable_client_vpn
+    error_message = "A certificate ARN must be provided when Client VPN is enabled. Create a certificate in AWS Certificate Manager and provide its ARN."
+  }
 }
 
-variable "min_capacity" {
+variable "enable_client_vpn" {
+  description = "Whether to enable the Client VPN endpoint"
+  type        = bool
+  default     = true
+}
+
+variable "client_vpn_cidr" {
+  description = "CIDR block for VPN client IP assignments"
+  type        = string
+  default     = "172.16.0.0/22"
+}
+
+variable "db_min_capacity" {
   description = "Minimum capacity for Aurora Serverless v2 in ACUs"
   type        = number
   default     = 0.5 # Minimum value for Aurora Serverless v2
@@ -91,22 +110,10 @@ variable "desired_count" {
   default     = 1
 }
 
-variable "max_capacity" {
-  description = "Maximum number of tasks for autoscaling"
+variable "fargate_max_capacity" {
+  description = "Maximum number of tasks for Fargate autoscaling"
   type        = number
   default     = 2
-}
-
-variable "enable_s3_bucket" {
-  description = "Whether to create an S3 bucket for logs and artifacts"
-  type        = bool
-  default     = false
-}
-
-variable "s3_bucket_name" {
-  description = "Name of the S3 bucket"
-  type        = string
-  default     = null
 }
 
 variable "on_premises_cidr_blocks" {
@@ -115,10 +122,67 @@ variable "on_premises_cidr_blocks" {
   default     = []
 }
 
-variable "customer_gateway_ip_address" {
-  description = "IP address of your on-premises VPN device"
-  type        = string
-  default     = ""
+# Removed unused variable: customer_gateway_ip_address
+
+# IP addresses allowed for access control
+variable "allowed_ip_addresses" {
+  description = "List of IP addresses allowed to access the service (in CIDR notation, e.g., 203.0.113.0/24)"
+  type        = list(string)
+  default     = []
 }
 
-# Authentication Variables removed - using internal ALB with security groups instead
+# ===== Database Configuration =====
+variable "db_engine" {
+  description = "Database engine type"
+  type        = string
+  default     = "aurora-postgresql"
+}
+
+variable "db_engine_mode" {
+  description = "Database engine mode"
+  type        = string
+  default     = "provisioned"
+}
+
+variable "db_engine_version" {
+  description = "PostgreSQL engine version for Aurora"
+  type        = string
+  default     = "16.6.4"
+}
+
+variable "db_deletion_protection" {
+  description = "Whether to enable deletion protection for the database"
+  type        = bool
+  default     = false
+}
+
+# ===== Fargate and Container Configuration =====
+variable "log_retention_days" {
+  description = "Number of days to retain CloudWatch logs"
+  type        = number
+  default     = 90
+}
+
+variable "container_health_check_start_period" {
+  description = "Grace period for container health checks (seconds)"
+  type        = number
+  default     = 120
+}
+
+variable "container_health_check_path" {
+  description = "Path for container health checks"
+  type        = string
+  default     = "/health/liveliness"
+}
+
+variable "autoscaling_cpu_target" {
+  description = "Target CPU utilization percentage for autoscaling"
+  type        = number
+  default     = 70
+}
+
+variable "autoscaling_memory_target" {
+  description = "Target memory utilization percentage for autoscaling"
+  type        = number
+  default     = 70
+}

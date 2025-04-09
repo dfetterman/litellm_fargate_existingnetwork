@@ -12,18 +12,25 @@ resource "aws_ecr_repository" "repository" {
   tags = var.tags
 }
 
-# Generate Unique ECR Image Tag
+# Generate deterministic ECR Image Tag based on content hashes
 locals {
-  ecr_image_tag = substr(uuid(), 0, 8)
+  content_hash = substr(sha256(join("", [
+    filesha256("${path.module}/image/Dockerfile"),
+    filesha256("${path.module}/image/litellm_config.yaml"),
+    filesha256("${path.module}/image/entrypoint.sh")
+  ])), 0, 8)
+
+  ecr_image_tag = local.content_hash
   ecr_image_uri = "${aws_ecr_repository.repository.repository_url}:${local.ecr_image_tag}"
 }
+
 
 # Build and push Docker image to ECR
 resource "null_resource" "docker_build_and_push" {
   provisioner "local-exec" {
-    working_dir = "${path.module}/../container"
+    working_dir = "${path.module}/image"
     interpreter = ["/bin/bash", "-c"]
-    command     = "./build_and_push.sh"
+    command     = "../build/build_and_push.sh"
     environment = {
       AWS_ACCOUNT_ID     = data.aws_caller_identity.current.account_id
       AWS_REGION         = var.aws_region
@@ -35,10 +42,7 @@ resource "null_resource" "docker_build_and_push" {
   }
 
   triggers = {
-    dockerfile_hash  = filesha256("${path.module}/../container/Dockerfile")
-    config_hash      = filesha256("${path.module}/../container/config/litellm_config.yaml")
-    startup_hash     = filesha256("${path.module}/../container/startup.sh")
-    image_tag        = local.ecr_image_tag
+    content_hash = local.content_hash
   }
 
   depends_on = [aws_ecr_repository.repository]
