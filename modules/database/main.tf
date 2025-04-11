@@ -1,3 +1,4 @@
+# Database - Aurora Serverless v2 PostgreSQL cluster for LiteLLM
 resource "aws_rds_cluster" "aurora" {
   cluster_identifier      = var.name
   engine                  = var.engine
@@ -20,6 +21,7 @@ resource "aws_rds_cluster" "aurora" {
   tags = var.tags
 }
 
+# Database - Aurora Serverless instance with auto-scaling
 resource "aws_rds_cluster_instance" "aurora_instances" {
   identifier         = "${var.name}-instance"
   cluster_identifier = aws_rds_cluster.aurora.id

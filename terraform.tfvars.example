@@ -30,10 +30,6 @@ vpc_cidr = "10.0.0.0/16"
 # These should be valid AZs in your selected AWS region
 availability_zones = ["us-east-1a", "us-east-1b"]
 
-# On-premises networks that need access (if any)
-# Add your office/home network CIDRs here if needed
-on_premises_cidr_blocks = []
-
 #####################################################
 # DATABASE CONFIGURATION
 #####################################################
@@ -70,8 +66,8 @@ db_deletion_protection = false
 container_port = 4000
 
 # Container resources
-cpu = 1024    # 1 vCPU (1024 = 1 vCPU)
-memory = 2048 # 2 GB RAM
+cpu = 4096 # 4 vCPU
+memory = 12288 # 12 GB RAM
 
 # Container health check settings
 container_health_check_path = "/health/liveliness"
@@ -110,7 +106,3 @@ enable_client_vpn = true
 # IMPORTANT: You must create this certificate in ACM before deployment
 # Example: "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"
 vpn_certificate_arn = ""
-
-# CIDR block for VPN client IP assignments
-# This should not overlap with your VPC CIDR or other networks
-client_vpn_cidr = "172.16.0.0/22"

@@ -8,10 +8,8 @@ module "vpc" {
   azs              = var.azs
   private_subnets  = [for i, az in var.azs : cidrsubnet(var.vpc_cidr, 8, i)]
   database_subnets = [for i, az in var.azs : cidrsubnet(var.vpc_cidr, 8, i + length(var.azs))]
-  # Removed public subnets since ALB is internal only
 
   create_database_subnet_group = true
-  # Removed NAT gateway since no public subnets are needed
   enable_dns_hostnames         = true
   enable_dns_support           = true
 
@@ -53,7 +51,7 @@ resource "aws_lb_target_group" "alb" {
   tags = var.tags
 }
 
-# ALB Listener on port 80 (for standard HTTP access)
+# ALB - Port 80 listener for health checks and HTTP traffic
 resource "aws_lb_listener" "alb" {
   load_balancer_arn = aws_lb.alb.arn
   port              = 80
@@ -67,7 +65,7 @@ resource "aws_lb_listener" "alb" {
   tags = var.tags
 }
 
-# ALB Listener on port 4000 (matching container port)
+# ALB - Port 4000 listener for direct LiteLLM API access
 resource "aws_lb_listener" "alb_4000" {
   load_balancer_arn = aws_lb.alb.arn
   port              = 4000
@@ -96,15 +94,14 @@ resource "aws_security_group" "vpc_endpoints" {
     description = "Allow HTTPS traffic from within the VPC"
   }
 
-  # Allow HTTP traffic for CloudFront VPC endpoint
+  # Allow HTTP traffic for VPC endpoints
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    # In production, you should restrict this to CloudFront IP ranges
-    # For now, we'll allow all traffic for testing
+    # In production, you should restrict this to IP ranges from your resources
     cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow HTTP traffic from CloudFront"
+    description = "Allow HTTP traffic"
   }
 
   egress {
@@ -118,19 +115,7 @@ resource "aws_security_group" "vpc_endpoints" {
   tags = merge(var.tags, { Name = "${var.name}-vpc-endpoints-sg" })
 }
 
-# Secrets Manager VPC Endpoint
-resource "aws_vpc_endpoint" "secretsmanager" {
-  vpc_id             = module.vpc.vpc_id
-  service_name       = "com.amazonaws.${var.aws_region}.secretsmanager"
-  vpc_endpoint_type  = "Interface"
-  subnet_ids         = module.vpc.private_subnets
-  security_group_ids = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = merge(var.tags, { Name = "${var.name}-secretsmanager-endpoint" })
-}
-
-# ECR API VPC Endpoint
+# Container Registry - Private endpoint for ECR API operations
 resource "aws_vpc_endpoint" "ecr_api" {
   vpc_id             = module.vpc.vpc_id
   service_name       = "com.amazonaws.${var.aws_region}.ecr.api"
@@ -142,7 +127,7 @@ resource "aws_vpc_endpoint" "ecr_api" {
   tags = merge(var.tags, { Name = "${var.name}-ecr-api-endpoint" })
 }
 
-# ECR Docker VPC Endpoint
+# Container Registry - Private endpoint for Docker registry operations
 resource "aws_vpc_endpoint" "ecr_dkr" {
   vpc_id             = module.vpc.vpc_id
   service_name       = "com.amazonaws.${var.aws_region}.ecr.dkr"
@@ -166,7 +151,7 @@ resource "aws_vpc_endpoint" "logs" {
   tags = merge(var.tags, { Name = "${var.name}-logs-endpoint" })
 }
 
-# Bedrock VPC Endpoint
+# AI Service - Private endpoint for Bedrock model management API
 resource "aws_vpc_endpoint" "bedrock" {
   vpc_id             = module.vpc.vpc_id
   service_name       = "com.amazonaws.${var.aws_region}.bedrock"
@@ -178,7 +163,7 @@ resource "aws_vpc_endpoint" "bedrock" {
   tags = merge(var.tags, { Name = "${var.name}-bedrock-endpoint" })
 }
 
-# Bedrock Runtime VPC Endpoint - Required for model inference calls
+# AI Service - Private endpoint for Bedrock model inference API
 resource "aws_vpc_endpoint" "bedrock_runtime" {
   vpc_id             = module.vpc.vpc_id
   service_name       = "com.amazonaws.${var.aws_region}.bedrock-runtime"
@@ -213,7 +198,7 @@ resource "aws_vpc_endpoint" "s3" {
 }
 
 
-# Security Group for ALB
+# Security - ALB security group allowing HTTP traffic on ports 80 and 4000
 resource "aws_security_group" "alb" {
   name        = "${var.name}-alb-sg"
   description = "Security group for the Application Load Balancer"
@@ -246,6 +231,7 @@ resource "aws_security_group" "alb" {
   tags = merge(var.tags, { Name = "${var.name}-alb-sg" })
 }
 
+# Security - ECS tasks security group allowing traffic to container port
 resource "aws_security_group" "ecs_tasks" {
   name        = "${var.name}-ecs-tasks-sg"
   description = "Security group for the ECS tasks"
@@ -278,6 +264,7 @@ resource "aws_security_group" "ecs_tasks" {
   tags = merge(var.tags, { Name = "${var.name}-ecs-tasks-sg" })
 }
 
+# Security - Database security group restricted to ECS tasks on port 5432
 resource "aws_security_group" "database" {
   name        = "${var.name}-database-sg"
   description = "Security group for the database"

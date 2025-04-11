@@ -1,0 +1,14 @@
+# AWS CLI configuration file
+# IMPORTANT: Replace ACCOUNT_X placeholders with your actual AWS account IDs
+
+[default]
+sts_regional_endpoints = regional
+
+# Example profiles for assuming roles in different AWS accounts
+# Each profile corresponds to an entry in litellm_config.yaml
+
+[bedrock-ACCOUNT_2]
+role_arn = arn:aws:iam::ACCOUNT_2:role/bedrock-caller
+credential_source = EcsContainer
+
+# Add or remove profiles as needed to match your AWS account structure

@@ -1,6 +1,4 @@
-# Container and IAM modules are now declared in the root main.tf
-
-# ECS Cluster
+# Compute - ECS cluster configuration for LiteLLM service
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "~> 5.12.0"
@@ -47,7 +45,7 @@ resource "aws_ecs_cluster_capacity_providers" "insights" {
   }
 }
 
-# Task Definition
+# Compute - Task definition for LiteLLM container with all required configurations
 resource "aws_ecs_task_definition" "litellm" {
   family                   = "${var.name}-task"
   network_mode             = "awsvpc"
@@ -122,7 +120,7 @@ resource "aws_ecs_task_definition" "litellm" {
 
 data "aws_caller_identity" "current" {}
 
-# ECS Service
+# Deployment - ECS service configuration with load balancer integration
 resource "aws_ecs_service" "litellm" {
   name                              = "${var.name}-service"
   cluster                           = module.ecs.cluster_id
@@ -152,7 +150,7 @@ resource "aws_ecs_service" "litellm" {
   tags = var.tags
 }
 
-# Auto Scaling
+# Scaling - Target configuration for Fargate service autoscaling
 resource "aws_appautoscaling_target" "ecs_target" {
   max_capacity       = var.max_capacity
   min_capacity       = var.desired_count

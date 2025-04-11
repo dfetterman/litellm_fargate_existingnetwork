@@ -1,7 +1,7 @@
-# Get Account ID
+# AWS Account - Get current account ID for ECR repository
 data "aws_caller_identity" "current" {}
 
-# ECR repository
+# Container Registry - ECR repository with vulnerability scanning
 resource "aws_ecr_repository" "repository" {
   name = var.repository_name
 
@@ -12,7 +12,7 @@ resource "aws_ecr_repository" "repository" {
   tags = var.tags
 }
 
-# Generate deterministic ECR Image Tag based on content hashes
+# Build - Generate deterministic image tag from content hashes
 locals {
   content_hash = substr(sha256(join("", [
     filesha256("${path.module}/image/Dockerfile"),
@@ -25,7 +25,7 @@ locals {
 }
 
 
-# Build and push Docker image to ECR
+# Deployment - Build and push Docker image using local-exec script
 resource "null_resource" "docker_build_and_push" {
   provisioner "local-exec" {
     working_dir = "${path.module}/image"

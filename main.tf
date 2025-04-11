@@ -3,6 +3,7 @@ provider "aws" {
 }
 
 # Create a random string for resource naming
+# Naming - 8 char random suffix for unique resource names
 resource "random_string" "suffix" {
   length  = 8
   special = false
@@ -10,6 +11,7 @@ resource "random_string" "suffix" {
 }
 
 # Generate a random master key for LiteLLM
+# Security - 32 char master key for LiteLLM proxy authentication
 resource "random_password" "litellm_master_key" {
   length           = 32
   special          = true
@@ -30,6 +32,7 @@ resource "random_string" "db_password_suffix" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
+# Naming - Combine project name with random suffix for resources
 locals {
   name_prefix = "${var.project_name}-${random_string.suffix.result}"
 
@@ -44,6 +47,7 @@ locals {
   db_password = var.db_password != "" ? var.db_password : random_string.db_password_suffix.result
   
   # Format the master key with "sk" prefix
+# Compatibility - Add 'sk-' prefix to match OpenAI API key format
   formatted_master_key = "sk-${random_password.litellm_master_key.result}"
 
   # Format the salt key with "sk" prefix
@@ -58,6 +62,7 @@ locals {
 }
 
 # Networking module
+# Networking - Private VPC with internal ALB and security groups
 module "networking" {
   source = "./modules/networking"
 

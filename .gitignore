@@ -50,7 +50,6 @@ logs/
 .DS_Store
 
 # Build artifacts
-build/
 dist/
 *.zip
 *.tar.gz
@@ -75,7 +74,6 @@ __pycache__/
 *.so
 .Python
 env/
-build/
 develop-eggs/
 dist/
 downloads/

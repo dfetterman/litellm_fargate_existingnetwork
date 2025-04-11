@@ -1,12 +1,9 @@
 FROM ghcr.io/berriai/litellm:litellm_stable_release_branch-v1.65.0-stable
 
-# Install jq and curl for secret parsing and health checks
+# Install curl for health checks
 RUN apk add --no-cache curl
 
-# Pre-install AWS CLI and other dependencies
-# RUN pip install --no-cache-dir awscli
-
-# Set environment variables
+# Set this if you want to debug your application
 # ENV LITELLM_LOG=DEBUG
 
 # Expose the port
@@ -14,7 +11,7 @@ EXPOSE 4000
 
 # Copy the litellm config
 RUN mkdir -p /app/config
-COPY ./litellm_config.yaml /app/config/
+COPY ./litellm_config_load_balance.yaml /app/config/litellm_config.yaml
 
 # Copy the AWS CLI config
 RUN mkdir -p /root/.aws

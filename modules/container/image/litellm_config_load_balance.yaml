@@ -1,0 +1,55 @@
+# LiteLLM Configuration
+
+# -----------------------------------------------------
+# General application settings
+# -----------------------------------------------------
+general_settings:
+  store_prompts_in_spend_logs: true
+  master_key: os.environ/LITELLM_MASTER_KEY
+  salt_key: os.environ/LITELLM_SALT_KEY
+  database_url: os.environ/DATABASE_URL
+  store_model_in_db: true
+  disable_spend_logs: true
+
+# -----------------------------------------------------
+# LiteLLM specific settings
+# -----------------------------------------------------
+litellm_settings:
+  turn_off_message_logging: true
+  global_disable_no_log_param: true
+
+# -----------------------------------------------------
+# Global Model Configuration
+# -----------------------------------------------------
+model_defaults: &model_defaults
+  model: "bedrock/us.anthropic.claude-3-7-sonnet-20250219-v1:0" # Bedrock inference profile (see https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html)
+  tpm: 20000
+  rpm: 5
+  aws_region_name: ${AWS_REGION}  
+
+# -----------------------------------------------------
+# Model Instances Configuration
+# -----------------------------------------------------
+model_list:
+  # Primary instance using default IAM role from ECS container
+  - model_name: "claude-3-7-load-balance"
+    litellm_params:
+      <<: *model_defaults
+  
+  # Add entries for each account want to use
+  # Each entry allows LiteLLM to assume a role in a different AWS account to access Bedrock
+  - model_name: "claude-3-7-load-balance"
+    litellm_params:
+      <<: *model_defaults
+      aws_session_name: "bedrock-ACCOUNT_2"
+      aws_role_name: "arn:aws:iam::ACCOUNT_2:role/bedrock-caller" # Replace with the role in Account 2 to assume. Make sure the role matches in the AWS CLI config file
+
+# -----------------------------------------------------
+# Router Configuration
+# -----------------------------------------------------
+router_settings:
+  routing_strategy: "least-busy" # ensures optimal distribution across accounts (see https://docs.litellm.ai/docs/routing)
+  health_check_interval: 30
+  timeout: 45
+  retries: 3
+  retry_after: 5
