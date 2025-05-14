@@ -93,7 +93,9 @@ module "database" {
   db_name              = var.db_name
   db_username          = var.db_username
   db_password          = local.db_password
-  db_subnet_group_name = module.networking.database_subnet_group_name
+  create_db_subnet_group = var.existing_database_subnet_group_name == ""
+  db_subnet_group_name = var.existing_database_subnet_group_name
+  subnet_ids           = length(var.existing_database_subnet_ids) > 0 ? var.existing_database_subnet_ids : var.existing_private_subnet_ids
   security_group_id    = module.networking.database_security_group_id
   min_capacity         = var.db_min_capacity
   max_capacity         = var.db_max_capacity

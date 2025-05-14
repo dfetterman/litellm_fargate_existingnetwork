@@ -13,9 +13,8 @@ EXPOSE 4000
 RUN mkdir -p /app/config
 COPY ./litellm_config_load_balance.yaml /app/config/litellm_config.yaml
 
-# Copy the AWS CLI config
+# Create AWS CLI config directory (but don't try to copy non-existent files)
 RUN mkdir -p /root/.aws
-COPY ./config /root/.aws
 
 # Create a startup script
 COPY ./entrypoint.sh /app/entrypoint.sh

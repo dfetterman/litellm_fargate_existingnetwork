@@ -22,6 +22,19 @@ variable "db_password" {
 variable "db_subnet_group_name" {
   description = "Name of the database subnet group"
   type        = string
+  default     = ""
+}
+
+variable "create_db_subnet_group" {
+  description = "Whether to create a DB subnet group"
+  type        = bool
+  default     = true
+}
+
+variable "subnet_ids" {
+  description = "List of subnet IDs for the DB subnet group"
+  type        = list(string)
+  default     = []
 }
 
 variable "security_group_id" {

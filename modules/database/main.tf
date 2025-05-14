@@ -1,3 +1,14 @@
+# Create a DB subnet group if one is not provided
+resource "aws_db_subnet_group" "this" {
+  count = var.create_db_subnet_group ? 1 : 0
+  
+  name        = "${var.name}-db-subnet-group"
+  subnet_ids  = var.subnet_ids
+  description = "Subnet group for ${var.name} database"
+  
+  tags = var.tags
+}
+
 # Database - Aurora Serverless v2 PostgreSQL cluster for LiteLLM
 resource "aws_rds_cluster" "aurora" {
   cluster_identifier      = var.name
@@ -7,7 +18,7 @@ resource "aws_rds_cluster" "aurora" {
   database_name           = var.db_name
   master_username         = var.db_username
   master_password         = var.db_password
-  db_subnet_group_name    = var.db_subnet_group_name
+  db_subnet_group_name    = var.create_db_subnet_group ? aws_db_subnet_group.this[0].name : var.db_subnet_group_name
   vpc_security_group_ids  = [var.security_group_id]
   skip_final_snapshot     = true
   deletion_protection     = var.deletion_protection
