@@ -285,6 +285,18 @@ resource "aws_vpc_endpoint" "ec2_messages" {
   tags = merge(var.tags, { Name = "${var.name}-ec2-messages-endpoint" })
 }
 
+# CloudWatch Endpoint - needed for CloudWatch metrics
+resource "aws_vpc_endpoint" "cloudwatch" {
+  vpc_id             = local.vpc_id
+  service_name       = "com.amazonaws.${var.aws_region}.monitoring"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = local.private_subnets
+  security_group_ids = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = merge(var.tags, { Name = "${var.name}-cloudwatch-endpoint" })
+}
+
 # Security - ALB security group allowing HTTP traffic on ports 80 and 4000
 resource "aws_security_group" "alb" {
   name        = "${var.name}-alb-sg"
