@@ -213,16 +213,40 @@ resource "aws_vpc_endpoint" "s3" {
   tags = merge(var.tags, { Name = "${var.name}-s3-endpoint" })
 }
 
-# ECR Authentication endpoint - needed for Fargate to pull images
-resource "aws_vpc_endpoint" "ecr_auth" {
+# ECS VPC Endpoint - needed for Fargate tasks
+resource "aws_vpc_endpoint" "ecs" {
   vpc_id             = local.vpc_id
-  service_name       = "com.amazonaws.${var.aws_region}.ecr.dkr-auth"
+  service_name       = "com.amazonaws.${var.aws_region}.ecs"
   vpc_endpoint_type  = "Interface"
   subnet_ids         = local.private_subnets
   security_group_ids = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 
-  tags = merge(var.tags, { Name = "${var.name}-ecr-auth-endpoint" })
+  tags = merge(var.tags, { Name = "${var.name}-ecs-endpoint" })
+}
+
+# ECS Agent VPC Endpoint - needed for Fargate tasks
+resource "aws_vpc_endpoint" "ecs_agent" {
+  vpc_id             = local.vpc_id
+  service_name       = "com.amazonaws.${var.aws_region}.ecs-agent"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = local.private_subnets
+  security_group_ids = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = merge(var.tags, { Name = "${var.name}-ecs-agent-endpoint" })
+}
+
+# ECS Telemetry VPC Endpoint - needed for Fargate tasks
+resource "aws_vpc_endpoint" "ecs_telemetry" {
+  vpc_id             = local.vpc_id
+  service_name       = "com.amazonaws.${var.aws_region}.ecs-telemetry"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = local.private_subnets
+  security_group_ids = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = merge(var.tags, { Name = "${var.name}-ecs-telemetry-endpoint" })
 }
 
 # Security - ALB security group allowing HTTP traffic on ports 80 and 4000
