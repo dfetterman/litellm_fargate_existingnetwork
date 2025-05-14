@@ -3,8 +3,9 @@
 set -e
 
 # Check if required environment variables are set
-if [ -z "$AWS_REGION" ] || [ -z "$AWS_ACCOUNT_ID" ] || [ -z "$ECR_REPOSITORY" ]; then
-  echo "Error: AWS_REGION, AWS_ACCOUNT_ID, and ECR_REPOSITORY must be set"
+if [ -z "$AWS_REGION" ] || [ -z "$AWS_ACCOUNT_ID" ] || [ -z "$REPOSITORY_NAME" ] || [ -z "$ECR_REPOSITORY_URL" ]; then
+  echo "Error: Required environment variables are not set."
+  echo "Required variables: AWS_REGION, AWS_ACCOUNT_ID, REPOSITORY_NAME, ECR_REPOSITORY_URL"
   exit 1
 fi
 
@@ -41,13 +42,11 @@ cd $TEMP_BUILD_DIR
 aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
 # Create the repository if it doesn't exist
-aws ecr describe-repositories --repository-names $ECR_REPOSITORY --region $AWS_REGION || aws ecr create-repository --repository-name $ECR_REPOSITORY --region $AWS_REGION
+aws ecr describe-repositories --repository-names $REPOSITORY_NAME --region $AWS_REGION || aws ecr create-repository --repository-name $REPOSITORY_NAME --region $AWS_REGION
 
-# Build the Docker image
-docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest .
-
-# Push the Docker image to ECR
-docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
+# Build and push the Docker image
+docker build -t $ECR_REPOSITORY_URL:latest .
+docker push $ECR_REPOSITORY_URL:latest
 
 # Clean up the temporary directory
 cd - > /dev/null
