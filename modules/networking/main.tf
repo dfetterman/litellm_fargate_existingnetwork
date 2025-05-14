@@ -249,6 +249,42 @@ resource "aws_vpc_endpoint" "ecs_telemetry" {
   tags = merge(var.tags, { Name = "${var.name}-ecs-telemetry-endpoint" })
 }
 
+# SSM VPC Endpoint - needed for CloudWatch agent
+resource "aws_vpc_endpoint" "ssm" {
+  vpc_id             = local.vpc_id
+  service_name       = "com.amazonaws.${var.aws_region}.ssm"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = local.private_subnets
+  security_group_ids = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = merge(var.tags, { Name = "${var.name}-ssm-endpoint" })
+}
+
+# SSM Messages VPC Endpoint - needed for CloudWatch agent
+resource "aws_vpc_endpoint" "ssm_messages" {
+  vpc_id             = local.vpc_id
+  service_name       = "com.amazonaws.${var.aws_region}.ssmmessages"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = local.private_subnets
+  security_group_ids = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = merge(var.tags, { Name = "${var.name}-ssm-messages-endpoint" })
+}
+
+# EC2 Messages VPC Endpoint - needed for CloudWatch agent
+resource "aws_vpc_endpoint" "ec2_messages" {
+  vpc_id             = local.vpc_id
+  service_name       = "com.amazonaws.${var.aws_region}.ec2messages"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = local.private_subnets
+  security_group_ids = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = merge(var.tags, { Name = "${var.name}-ec2-messages-endpoint" })
+}
+
 # Security - ALB security group allowing HTTP traffic on ports 80 and 4000
 resource "aws_security_group" "alb" {
   name        = "${var.name}-alb-sg"
