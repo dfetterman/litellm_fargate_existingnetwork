@@ -43,3 +43,45 @@ variable "on_premises_cidr_blocks" {
   description = "List of on-premises CIDR blocks"
   type        = list(string)
 }
+
+variable "environment" {
+  description = "Environment name (dev/stage/prod)"
+  type        = string
+  default     = "dev"
+}
+
+variable "create_vpc" {
+  description = "Whether to create a new VPC (true) or use an existing one (false)"
+  type        = bool
+  default     = true
+}
+
+variable "existing_vpc_id" {
+  description = "ID of an existing VPC to use if create_vpc is false"
+  type        = string
+  default     = ""
+}
+
+variable "existing_private_subnet_ids" {
+  description = "List of existing private subnet IDs to use if create_vpc is false"
+  type        = list(string)
+  default     = []
+}
+
+variable "existing_public_subnet_ids" {
+  description = "List of existing public subnet IDs to use if create_vpc is false"
+  type        = list(string)
+  default     = []
+}
+
+variable "existing_database_subnet_ids" {
+  description = "List of existing database subnet IDs to use if create_vpc is false"
+  type        = list(string)
+  default     = []
+}
+
+variable "existing_database_subnet_group_name" {
+  description = "Name of existing database subnet group to use if create_vpc is false"
+  type        = string
+  default     = ""
+}

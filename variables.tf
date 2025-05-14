@@ -52,18 +52,13 @@ variable "environment" {
 variable "vpn_certificate_arn" {
   description = "ARN of the ACM certificate for the Client VPN endpoint. You must create a server certificate in AWS Certificate Manager before deployment."
   type        = string
-  default     = ""
-  
-  validation {
-    condition     = var.vpn_certificate_arn != "" || !var.enable_client_vpn
-    error_message = "A certificate ARN must be provided when Client VPN is enabled. Create a certificate in AWS Certificate Manager and provide its ARN."
-  }
+  default     = "arn:aws:acm:us-east-1:629763229779:certificate/77db9523-f871-44e2-a437-0f96380644b6"
 }
 
 variable "enable_client_vpn" {
   description = "Whether to enable the Client VPN endpoint"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "client_vpn_cidr" {
@@ -147,7 +142,7 @@ variable "db_engine_mode" {
 variable "db_engine_version" {
   description = "PostgreSQL engine version for Aurora"
   type        = string
-  default     = "16.6.4"
+  default     = "15.4"
 }
 
 variable "db_deletion_protection" {
@@ -185,4 +180,41 @@ variable "autoscaling_memory_target" {
   description = "Target memory utilization percentage for autoscaling"
   type        = number
   default     = 70
+}
+
+# ===== Existing VPC Configuration =====
+variable "create_vpc" {
+  description = "Whether to create a new VPC (true) or use an existing one (false)"
+  type        = bool
+  default     = false
+}
+
+variable "existing_vpc_id" {
+  description = "ID of an existing VPC to use if create_vpc is false"
+  type        = string
+  default     = "vpc-0a86e94a1fe7ecadd"
+}
+
+variable "existing_private_subnet_ids" {
+  description = "List of existing private subnet IDs to use if create_vpc is false"
+  type        = list(string)
+  default     = ["subnet-0955d2af5022254c6", "subnet-00972a36a6726e9e7"]
+}
+
+variable "existing_public_subnet_ids" {
+  description = "List of existing public subnet IDs to use if create_vpc is false"
+  type        = list(string)
+  default     = ["subnet-05391ef2154bc4fbf", "subnet-06c762431c89c93a1"]
+}
+
+variable "existing_database_subnet_ids" {
+  description = "List of existing database subnet IDs to use if create_vpc is false"
+  type        = list(string)
+  default     = []
+}
+
+variable "existing_database_subnet_group_name" {
+  description = "Name of existing database subnet group to use if create_vpc is false"
+  type        = string
+  default     = ""
 }

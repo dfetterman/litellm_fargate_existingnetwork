@@ -22,8 +22,30 @@ environment = "dev"
 # NETWORKING CONFIGURATION
 #####################################################
 
+# Whether to create a new VPC or use an existing one
+# Set to false to use an existing VPC
+create_vpc = false
+
+# Existing VPC ID (if create_vpc = false)
+existing_vpc_id = "vpc-0a86e94a1fe7ecadd"
+
+# Existing subnet IDs (if create_vpc = false)
+# Private subnets for Fargate containers
+existing_private_subnet_ids = ["subnet-0955d2af5022254c6", "subnet-00972a36a6726e9e7"]
+
+# Public subnets for ALB
+existing_public_subnet_ids = ["subnet-05391ef2154bc4fbf", "subnet-06c762431c89c93a1"]
+
+# Database subnets (if using existing subnets for database)
+# If not provided, database will be placed in private subnets
+existing_database_subnet_ids = []
+
+# Database subnet group name (if using existing database subnet group)
+# Leave empty to create a new one or use private subnets
+existing_database_subnet_group_name = ""
+
 # VPC CIDR block - defines the IP range for your VPC
-# Make sure this doesn't overlap with other VPCs in your AWS account
+# Only used if create_vpc = true
 vpc_cidr = "10.0.0.0/16"
 
 # Availability zones to use - at least two for high availability
@@ -48,7 +70,7 @@ db_password = ""
 # Database engine settings
 db_engine = "aurora-postgresql"
 db_engine_mode = "provisioned"
-db_engine_version = "16.6.4"  # Latest Aurora PostgreSQL compatible version
+db_engine_version = "15.4"  # Updated to a supported Aurora PostgreSQL version
 
 # Database capacity settings (Aurora Serverless v2)
 db_min_capacity = 0.5  # Minimum capacity in ACUs (0.5 is the minimum)
@@ -100,9 +122,11 @@ log_retention_days = 90
 
 # Whether to enable the Client VPN endpoint
 # Set to false if you want to use a different access method
-enable_client_vpn = true
+# Set to false if you want to make the application internet-accessible via public ALB
+enable_client_vpn = false
 
 # ARN of the ACM certificate for the Client VPN endpoint
 # IMPORTANT: You must create this certificate in ACM before deployment
 # Example: "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"
+# Only required if enable_client_vpn is set to true
 vpn_certificate_arn = ""

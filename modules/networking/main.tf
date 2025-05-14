@@ -1,17 +1,33 @@
+locals {
+  # Use existing VPC ID if create_vpc is false, otherwise use the created VPC ID
+  vpc_id = var.create_vpc ? module.vpc[0].vpc_id : var.existing_vpc_id
+  
+  # Use existing subnet IDs if create_vpc is false, otherwise use the created subnet IDs
+  private_subnets = var.create_vpc ? module.vpc[0].private_subnets : var.existing_private_subnet_ids
+  public_subnets = var.create_vpc ? module.vpc[0].public_subnets : var.existing_public_subnet_ids
+  database_subnets = var.create_vpc ? module.vpc[0].database_subnets : var.existing_database_subnet_ids
+  database_subnet_group_name = var.create_vpc ? module.vpc[0].database_subnet_group_name : var.existing_database_subnet_group_name
+}
+
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.19.0"
+  count   = var.create_vpc ? 1 : 0
 
   name = var.name
   cidr = var.vpc_cidr
 
   azs              = var.azs
   private_subnets  = [for i, az in var.azs : cidrsubnet(var.vpc_cidr, 8, i)]
+  public_subnets   = [for i, az in var.azs : cidrsubnet(var.vpc_cidr, 8, i + 2 * length(var.azs))]
   database_subnets = [for i, az in var.azs : cidrsubnet(var.vpc_cidr, 8, i + length(var.azs))]
 
   create_database_subnet_group = true
   enable_dns_hostnames         = true
   enable_dns_support           = true
+  
+  enable_nat_gateway = true
+  single_nat_gateway = var.environment == "dev" ? true : false
 
   tags = var.tags
 }
@@ -19,9 +35,9 @@ module "vpc" {
 # Internal Application Load Balancer for HTTP termination
 resource "aws_lb" "alb" {
   name               = "${var.name}-alb"
-  internal           = true
+  internal           = false
   load_balancer_type = "application"
-  subnets            = module.vpc.private_subnets
+  subnets            = local.public_subnets
   security_groups    = [aws_security_group.alb.id]
 
   enable_deletion_protection = false
@@ -34,7 +50,7 @@ resource "aws_lb_target_group" "alb" {
   name        = "${var.name}-alb-tg"
   port        = var.container_port
   protocol    = "HTTP"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = local.vpc_id
   target_type = "ip"
 
   health_check {
@@ -84,7 +100,7 @@ resource "aws_lb_listener" "alb_4000" {
 resource "aws_security_group" "vpc_endpoints" {
   name        = "${var.name}-vpc-endpoints-sg"
   description = "Security group for VPC endpoints"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = local.vpc_id
 
   ingress {
     from_port   = 443
@@ -117,10 +133,10 @@ resource "aws_security_group" "vpc_endpoints" {
 
 # Container Registry - Private endpoint for ECR API operations
 resource "aws_vpc_endpoint" "ecr_api" {
-  vpc_id             = module.vpc.vpc_id
+  vpc_id             = local.vpc_id
   service_name       = "com.amazonaws.${var.aws_region}.ecr.api"
   vpc_endpoint_type  = "Interface"
-  subnet_ids         = module.vpc.private_subnets
+  subnet_ids         = local.private_subnets
   security_group_ids = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 
@@ -129,10 +145,10 @@ resource "aws_vpc_endpoint" "ecr_api" {
 
 # Container Registry - Private endpoint for Docker registry operations
 resource "aws_vpc_endpoint" "ecr_dkr" {
-  vpc_id             = module.vpc.vpc_id
+  vpc_id             = local.vpc_id
   service_name       = "com.amazonaws.${var.aws_region}.ecr.dkr"
   vpc_endpoint_type  = "Interface"
-  subnet_ids         = module.vpc.private_subnets
+  subnet_ids         = local.private_subnets
   security_group_ids = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 
@@ -141,10 +157,10 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
 
 # CloudWatch Logs VPC Endpoint
 resource "aws_vpc_endpoint" "logs" {
-  vpc_id             = module.vpc.vpc_id
+  vpc_id             = local.vpc_id
   service_name       = "com.amazonaws.${var.aws_region}.logs"
   vpc_endpoint_type  = "Interface"
-  subnet_ids         = module.vpc.private_subnets
+  subnet_ids         = local.private_subnets
   security_group_ids = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 
@@ -153,10 +169,10 @@ resource "aws_vpc_endpoint" "logs" {
 
 # AI Service - Private endpoint for Bedrock model management API
 resource "aws_vpc_endpoint" "bedrock" {
-  vpc_id             = module.vpc.vpc_id
+  vpc_id             = local.vpc_id
   service_name       = "com.amazonaws.${var.aws_region}.bedrock"
   vpc_endpoint_type  = "Interface"
-  subnet_ids         = module.vpc.private_subnets
+  subnet_ids         = local.private_subnets
   security_group_ids = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 
@@ -165,10 +181,10 @@ resource "aws_vpc_endpoint" "bedrock" {
 
 # AI Service - Private endpoint for Bedrock model inference API
 resource "aws_vpc_endpoint" "bedrock_runtime" {
-  vpc_id             = module.vpc.vpc_id
+  vpc_id             = local.vpc_id
   service_name       = "com.amazonaws.${var.aws_region}.bedrock-runtime"
   vpc_endpoint_type  = "Interface"
-  subnet_ids         = module.vpc.private_subnets
+  subnet_ids         = local.private_subnets
   security_group_ids = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 
@@ -177,10 +193,10 @@ resource "aws_vpc_endpoint" "bedrock_runtime" {
 
 # STS VPC Endpoint
 resource "aws_vpc_endpoint" "sts" {
-  vpc_id              = module.vpc.vpc_id
+  vpc_id              = local.vpc_id
   service_name        = "com.amazonaws.${var.aws_region}.sts"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = module.vpc.private_subnets
+  subnet_ids          = local.private_subnets
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 
@@ -189,10 +205,10 @@ resource "aws_vpc_endpoint" "sts" {
 
 # S3 VPC Endpoint (Gateway type)
 resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = module.vpc.vpc_id
+  vpc_id            = local.vpc_id
   service_name      = "com.amazonaws.${var.aws_region}.s3"
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = module.vpc.private_route_table_ids
+  route_table_ids   = var.create_vpc ? module.vpc[0].private_route_table_ids : []
 
   tags = merge(var.tags, { Name = "${var.name}-s3-endpoint" })
 }
@@ -202,7 +218,7 @@ resource "aws_vpc_endpoint" "s3" {
 resource "aws_security_group" "alb" {
   name        = "${var.name}-alb-sg"
   description = "Security group for the Application Load Balancer"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = local.vpc_id
 
   ingress {
     from_port   = 80
@@ -235,7 +251,7 @@ resource "aws_security_group" "alb" {
 resource "aws_security_group" "ecs_tasks" {
   name        = "${var.name}-ecs-tasks-sg"
   description = "Security group for the ECS tasks"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = local.vpc_id
 
   ingress {
     from_port   = var.container_port
@@ -268,7 +284,7 @@ resource "aws_security_group" "ecs_tasks" {
 resource "aws_security_group" "database" {
   name        = "${var.name}-database-sg"
   description = "Security group for the database"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = local.vpc_id
 
   ingress {
     from_port       = 5432

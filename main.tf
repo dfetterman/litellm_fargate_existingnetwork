@@ -73,7 +73,16 @@ module "networking" {
   on_premises_cidr_blocks = var.on_premises_cidr_blocks
   aws_region              = var.aws_region
   log_bucket_id           = module.logging.bucket_id
+  environment             = var.environment
   tags                    = local.tags
+  
+  # VPC configuration
+  create_vpc                      = var.create_vpc
+  existing_vpc_id                 = var.existing_vpc_id
+  existing_private_subnet_ids     = var.existing_private_subnet_ids
+  existing_public_subnet_ids      = var.existing_public_subnet_ids
+  existing_database_subnet_ids    = var.existing_database_subnet_ids
+  existing_database_subnet_group_name = var.existing_database_subnet_group_name
 }
 
 # Database module - uses the generated password
