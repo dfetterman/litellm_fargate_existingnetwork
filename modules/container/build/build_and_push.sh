@@ -9,6 +9,12 @@ if [ -z "$AWS_REGION" ] || [ -z "$AWS_ACCOUNT_ID" ] || [ -z "$REPOSITORY_NAME" ]
   exit 1
 fi
 
+# Create a temporary build directory with more space
+BUILD_DIR="/tmp/litellm-build"
+mkdir -p $BUILD_DIR
+cp -r * $BUILD_DIR/
+cd $BUILD_DIR
+
 # Login to ECR 
 echo "Logging in to ECR..."
 aws --region ${AWS_REGION} ecr get-login-password | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -20,3 +26,7 @@ docker buildx build --platform linux/amd64 -t "${ECR_IMAGE}" -f Dockerfile . ${B
 docker push "${ECR_IMAGE}"
 
 echo "Image successfully built and pushed to ECR"
+
+# Clean up
+cd -
+rm -rf $BUILD_DIR
