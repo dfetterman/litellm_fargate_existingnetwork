@@ -9,6 +9,11 @@ if [ -z "$AWS_REGION" ] || [ -z "$AWS_ACCOUNT_ID" ] || [ -z "$REPOSITORY_NAME" ]
   exit 1
 fi
 
+# Clean up Docker to free space
+echo "Cleaning up Docker to free space..."
+docker system prune -a -f || true
+docker volume prune -f || true
+
 # Create a temporary build directory with more space
 BUILD_DIR="/tmp/litellm-build"
 mkdir -p $BUILD_DIR
@@ -30,3 +35,4 @@ echo "Image successfully built and pushed to ECR"
 # Clean up
 cd -
 rm -rf $BUILD_DIR
+docker system prune -a -f || true
