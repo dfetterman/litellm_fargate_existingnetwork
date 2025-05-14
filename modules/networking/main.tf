@@ -208,11 +208,22 @@ resource "aws_vpc_endpoint" "s3" {
   vpc_id            = local.vpc_id
   service_name      = "com.amazonaws.${var.aws_region}.s3"
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = var.create_vpc ? module.vpc[0].private_route_table_ids : []
-
+  route_table_ids   = var.existing_private_route_table_ids
+  
   tags = merge(var.tags, { Name = "${var.name}-s3-endpoint" })
 }
 
+# ECR Authentication endpoint - needed for Fargate to pull images
+resource "aws_vpc_endpoint" "ecr_auth" {
+  vpc_id             = local.vpc_id
+  service_name       = "com.amazonaws.${var.aws_region}.ecr.dkr-auth"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = local.private_subnets
+  security_group_ids = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = merge(var.tags, { Name = "${var.name}-ecr-auth-endpoint" })
+}
 
 # Security - ALB security group allowing HTTP traffic on ports 80 and 4000
 resource "aws_security_group" "alb" {

@@ -44,6 +44,10 @@ existing_database_subnet_ids = []
 # Leave empty to create a new one or use private subnets
 existing_database_subnet_group_name = ""
 
+# Route table IDs for private subnets (needed for VPC endpoints)
+# These are required for ECR access from private subnets
+existing_private_route_table_ids = ["rtb-0123456789abcdef0", "rtb-0123456789abcdef1"]
+
 # VPC CIDR block - defines the IP range for your VPC
 # Only used if create_vpc = true
 vpc_cidr = "10.0.0.0/16"

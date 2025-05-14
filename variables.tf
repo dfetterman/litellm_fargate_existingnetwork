@@ -218,3 +218,9 @@ variable "existing_database_subnet_group_name" {
   type        = string
   default     = ""
 }
+
+variable "existing_private_route_table_ids" {
+  description = "List of existing private route table IDs to use for VPC endpoints"
+  type        = list(string)
+  default     = []
+}

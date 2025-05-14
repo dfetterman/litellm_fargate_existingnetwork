@@ -83,6 +83,7 @@ module "networking" {
   existing_public_subnet_ids      = var.existing_public_subnet_ids
   existing_database_subnet_ids    = var.existing_database_subnet_ids
   existing_database_subnet_group_name = var.existing_database_subnet_group_name
+  existing_private_route_table_ids = var.existing_private_route_table_ids
 }
 
 # Database module - uses the generated password
