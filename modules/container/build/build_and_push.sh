@@ -3,36 +3,62 @@
 set -e
 
 # Check if required environment variables are set
-if [ -z "$AWS_REGION" ] || [ -z "$AWS_ACCOUNT_ID" ] || [ -z "$REPOSITORY_NAME" ] || [ -z "$ECR_IMAGE" ]; then
-  echo "Error: Required environment variables are not set."
-  echo "Required variables: AWS_REGION, AWS_ACCOUNT_ID, REPOSITORY_NAME, ECR_IMAGE"
+if [ -z "$AWS_REGION" ] || [ -z "$AWS_ACCOUNT_ID" ] || [ -z "$ECR_REPOSITORY" ]; then
+  echo "Error: AWS_REGION, AWS_ACCOUNT_ID, and ECR_REPOSITORY must be set"
   exit 1
 fi
 
-# Clean up Docker to free space
-echo "Cleaning up Docker to free space..."
-docker system prune -a -f || true
-docker volume prune -f || true
+# Clean up Docker storage
+docker system prune -a -f
+docker volume prune -f
 
-# Create a temporary build directory with more space
-BUILD_DIR="/tmp/litellm-build"
-mkdir -p $BUILD_DIR
-cp -r * $BUILD_DIR/
-cd $BUILD_DIR
+# Stop Docker daemon if running
+if pgrep dockerd > /dev/null; then
+  echo "Stopping Docker daemon..."
+  sudo pkill dockerd
+  sleep 3
+fi
 
-# Login to ECR 
-echo "Logging in to ECR..."
-aws --region ${AWS_REGION} ecr get-login-password | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+# Create directory for Docker data
+sudo mkdir -p /tmp/docker
 
-# Build and push image for amd64 architecture (Fargate uses x86_64/amd64)
-echo "Building Docker image for amd64 architecture..."
-# Use --platform to ensure we build for linux/amd64 even when building on Mac with Apple Silicon
-docker buildx build --platform linux/amd64 -t "${ECR_IMAGE}" -f Dockerfile . ${BUILD_ARGS} --load
-docker push "${ECR_IMAGE}"
+# Start Docker daemon with custom data directory
+echo "Starting Docker daemon with data-root in /tmp..."
+sudo dockerd --data-root=/tmp/docker &
+sleep 5  # Wait for Docker to start
 
-echo "Image successfully built and pushed to ECR"
+# Create a temporary build directory
+TEMP_BUILD_DIR="/tmp/litellm-build"
+mkdir -p $TEMP_BUILD_DIR
 
-# Clean up
-cd -
-rm -rf $BUILD_DIR
-docker system prune -a -f || true
+# Copy all necessary files to the temporary directory
+cp -r $(dirname "$0")/../image/* $TEMP_BUILD_DIR/
+
+# Navigate to the temporary build directory
+cd $TEMP_BUILD_DIR
+
+# Login to ECR
+aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+# Create the repository if it doesn't exist
+aws ecr describe-repositories --repository-names $ECR_REPOSITORY --region $AWS_REGION || aws ecr create-repository --repository-name $ECR_REPOSITORY --region $AWS_REGION
+
+# Build the Docker image
+docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest .
+
+# Push the Docker image to ECR
+docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
+
+# Clean up the temporary directory
+cd - > /dev/null
+rm -rf $TEMP_BUILD_DIR
+
+# Clean up Docker storage again
+docker system prune -a -f
+docker volume prune -f
+
+# Stop custom Docker daemon
+echo "Stopping Docker daemon..."
+sudo pkill dockerd
+
+echo "Build and push completed successfully!"
