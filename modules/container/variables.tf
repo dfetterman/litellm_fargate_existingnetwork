@@ -26,3 +26,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "use_prebuilt_image" {
+  description = "Whether to use a pre-built image instead of building one"
+  type        = bool
+  default     = false
+}

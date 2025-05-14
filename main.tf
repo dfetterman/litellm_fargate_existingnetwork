@@ -129,6 +129,7 @@ module "container" {
   aws_region      = var.aws_region
   repository_name = local.name_prefix
   tags            = local.tags
+  use_prebuilt_image = true  # Use a pre-built image to avoid disk space issues in CloudShell
 }
 
 # Fargate module
