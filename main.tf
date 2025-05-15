@@ -13,23 +13,29 @@ resource "random_string" "suffix" {
 # Generate a random master key for LiteLLM
 # Security - 32 char master key for LiteLLM proxy authentication
 resource "random_password" "litellm_master_key" {
-  length           = 32
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
+  length  = 32
+  special = false
+  upper   = true
+  lower   = true
+  numeric = true
 }
 
 # Generate a random salt key for LiteLLM
 resource "random_password" "litellm_salt_key" {
-  length           = 32
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
+  length  = 32
+  special = false
+  upper   = true
+  lower   = true
+  numeric = true
 }
 
 # Generate a random string to use as part of the password if not provided
 resource "random_string" "db_password_suffix" {
-  length           = 16
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
+  length  = 16
+  special = false
+  upper   = true
+  lower   = true
+  numeric = true
 }
 
 # Naming - Combine project name with random suffix for resources
@@ -53,32 +59,10 @@ locals {
   # Format the salt key with "sk" prefix
   formatted_salt_key = "sk-${random_password.litellm_salt_key.result}"
   
-  # Generate database connection string with URL-encoded password
+  # Generate database connection string
   db_connection_string = (
     module.database.endpoint != "" && module.database.port != 0 
-    ? format(
-        "postgresql://%s:%s@%s:%s/%s?sslmode=require",
-        var.db_username,
-        replace(
-          replace(
-            replace(
-              replace(
-                replace(
-                  local.db_password,
-                  "%", local.url_encode_map["%"]
-                ),
-                ":", local.url_encode_map[":"]
-              ),
-              "@", local.url_encode_map["@"]
-            ),
-            "/", local.url_encode_map["/"]
-          ),
-          " ", local.url_encode_map[" "]
-        ),
-        module.database.endpoint,
-        module.database.port,
-        var.db_name
-      )
+    ? "postgresql://${var.db_username}:${local.db_password}@${module.database.endpoint}:${module.database.port}/${var.db_name}" 
     : ""
   )
 }
