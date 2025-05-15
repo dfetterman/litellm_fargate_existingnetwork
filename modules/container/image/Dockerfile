@@ -3,8 +3,11 @@ FROM ghcr.io/berriai/litellm:litellm_stable_release_branch-v1.65.0-stable
 # Install curl for health checks
 RUN apk add --no-cache curl
 
-# Enable debug logging
+# Enable detailed debugging
 ENV LITELLM_LOG=DEBUG
+ENV PRISMA_LOG_QUERIES=true
+ENV PRISMA_LOG_LEVEL=debug
+ENV DEBUG=true
 
 # Expose the port
 EXPOSE 4000
