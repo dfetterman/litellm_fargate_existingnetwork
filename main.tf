@@ -61,12 +61,19 @@ locals {
         var.db_username,
         replace(
           replace(
-            local.db_password,
-            "/[^A-Za-z0-9_.~-]/",
-            function(char) lookup(local.url_encode_chars, char, char)
+            replace(
+              replace(
+                replace(
+                  local.db_password,
+                  "%", local.url_encode_map["%"]
+                ),
+                ":", local.url_encode_map[":"]
+              ),
+              "@", local.url_encode_map["@"]
+            ),
+            "/", local.url_encode_map["/"]
           ),
-          "%",
-          "%%"
+          " ", local.url_encode_map[" "]
         ),
         module.database.endpoint,
         module.database.port,
