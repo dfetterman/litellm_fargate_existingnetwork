@@ -3,8 +3,8 @@ FROM ghcr.io/berriai/litellm:litellm_stable_release_branch-v1.65.0-stable
 # Install curl for health checks
 RUN apk add --no-cache curl
 
-# Set this if you want to debug your application
-# ENV LITELLM_LOG=DEBUG
+# Enable debug logging
+ENV LITELLM_LOG=DEBUG
 
 # Expose the port
 EXPOSE 4000
