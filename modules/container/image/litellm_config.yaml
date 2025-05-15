@@ -4,13 +4,13 @@
 # General application settings - Using Environment Variables from ECS Fargate
 # -----------------------------------------------------
 general_settings:
-  store_prompts_in_spend_logs: false
+  store_prompts_in_spend_logs: true
   master_key: os.environ/LITELLM_MASTER_KEY
   salt_key: os.environ/LITELLM_SALT_KEY
   # Temporarily disable database to get the container running
   # database_url: os.environ/DATABASE_URL
-  store_model_in_db: false
-  disable_spend_logs: true
+  store_model_in_db: true
+  disable_spend_logs: false
 
 # -----------------------------------------------------
 # Model Configuration
