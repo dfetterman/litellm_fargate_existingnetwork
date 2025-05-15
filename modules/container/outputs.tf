@@ -12,8 +12,3 @@ output "image_uri" {
   description = "URI of the container image"
   value       = local.ecr_image_uri
 }
-
-output "image_tag" {
-  description = "Tag of the Docker image in ECR"
-  value       = local.ecr_image_tag
-}
