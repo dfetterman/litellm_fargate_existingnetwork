@@ -56,7 +56,22 @@ locals {
   # Generate database connection string with URL-encoded password
   db_connection_string = (
     module.database.endpoint != "" && module.database.port != 0 
-    ? "postgresql://${var.db_username}:${local.urlencode_string(local.db_password)}@${module.database.endpoint}:${module.database.port}/${var.db_name}?sslmode=require" 
+    ? format(
+        "postgresql://%s:%s@%s:%s/%s?sslmode=require",
+        var.db_username,
+        replace(
+          replace(
+            local.db_password,
+            "/[^A-Za-z0-9_.~-]/",
+            function(char) lookup(local.url_encode_chars, char, char)
+          ),
+          "%",
+          "%%"
+        ),
+        module.database.endpoint,
+        module.database.port,
+        var.db_name
+      )
     : ""
   )
 }
