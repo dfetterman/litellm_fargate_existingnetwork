@@ -16,7 +16,7 @@ general_settings:
 # -----------------------------------------------------
 litellm_settings:
   turn_off_message_logging: false
-  global_disable_no_log_param: true
+  global_disable_no_log_param: false
 
 # -----------------------------------------------------
 # Global Model Configuration

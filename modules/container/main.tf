@@ -43,7 +43,7 @@ resource "null_resource" "docker_build_and_push" {
     # Trigger on file changes but don't use hash in tag
     content_hash = substr(sha256(join("", [
       filesha256("${path.module}/image/Dockerfile"),
-      filesha256("${path.module}/image/litellm_config.yaml"),
+      filesha256("${path.module}/image/litellm_config_load_balance.yaml"),
       filesha256("${path.module}/image/entrypoint.sh")
     ])), 0, 8)
   }
