@@ -1,4 +1,5 @@
-FROM ghcr.io/berriai/litellm:litellm_stable_release_branch-v1.65.0-stable
+# FROM ghcr.io/berriai/litellm:litellm_stable_release_branch-v1.65.0-stable
+FROM ghcr.io/berriai/litellm:litellm_stable_release_branch-v1.69.0-stable
 
 # Install curl for health checks
 RUN apk add --no-cache curl

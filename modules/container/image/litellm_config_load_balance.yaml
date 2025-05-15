@@ -43,6 +43,11 @@ model_list:
       <<: *model_defaults
       aws_session_name: "bedrock-ACCOUNT_2"
       aws_role_name: "arn:aws:iam::ACCOUNT_2:role/bedrock-caller" # Replace with the role in Account 2 to assume. Make sure the role matches in the AWS CLI config file
+  - model_name: "claude-3-7-load-balance"
+    litellm_params:
+      <<: *model_defaults
+      aws_session_name: "bedrock-ACCOUNT_3"
+      aws_role_name: "arn:aws:iam::ACCOUNT_3:role/bedrock-caller" # Replace with the role in Account 2 to assume. Make sure the role matches in the AWS CLI config file
 
 # -----------------------------------------------------
 # Router Configuration
