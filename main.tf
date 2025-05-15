@@ -53,10 +53,10 @@ locals {
   # Format the salt key with "sk" prefix
   formatted_salt_key = "sk-${random_password.litellm_salt_key.result}"
   
-  # Generate database connection string
+  # Generate database connection string with URL-encoded password
   db_connection_string = (
     module.database.endpoint != "" && module.database.port != 0 
-    ? "postgresql://${var.db_username}:${local.db_password}@${module.database.endpoint}:${module.database.port}/${var.db_name}?sslmode=require" 
+    ? "postgresql://${var.db_username}:${local.urlencode_string(local.db_password)}@${module.database.endpoint}:${module.database.port}/${var.db_name}?sslmode=require" 
     : ""
   )
 }
